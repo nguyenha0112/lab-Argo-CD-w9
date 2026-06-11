@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xbrain-api
+  namespace: mini-platform
+  labels:
+    app: xbrain-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xbrain-api
+  template:
+    metadata:
+      labels:
+        app: xbrain-api
+    spec:
+      containers:
+        - name: api
+          image: mendhak/http-https-echo:35
+          ports:
+            - containerPort: 8080
+          env:
+            - name: HTTP_PORT
+              value: "8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xbrain-api
+  namespace: mini-platform
+  labels:
+    app: xbrain-api
+spec:
+  selector:
+    app: xbrain-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: mini-platform
+  labels:
+    app: web
+spec:
+  selector:
+    app: web
+    xbrain.io/component: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

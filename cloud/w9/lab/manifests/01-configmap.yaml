@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xbrain-frontend
+  namespace: mini-platform
+data:
+  index.html: |
+    <!doctype html>
+    <html lang="vi">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>XBrain Company Form</title>
+      <style>
+        :root { color-scheme: light; font-family: Arial, sans-serif; }
+        body { margin: 0; background: #eef2f7; color: #162033; }
+        main { max-width: 760px; margin: 0 auto; padding: 42px 18px; }
+        section { background: #fff; border: 1px solid #d9e1ec; border-radius: 8px; padding: 24px; box-shadow: 0 10px 28px #1f29371a; }
+        h1 { margin: 0 0 8px; font-size: 30px; }
+        p { margin: 0 0 22px; color: #53627a; }
+        label { display: grid; gap: 6px; margin: 14px 0; font-weight: 700; }
+        input, textarea { font: inherit; padding: 11px 12px; border: 1px solid #b9c5d6; border-radius: 6px; }
+        textarea { min-height: 110px; resize: vertical; }
+        button { margin-top: 10px; border: 0; border-radius: 6px; background: #0f766e; color: #fff; padding: 12px 16px; font-weight: 700; cursor: pointer; }
+        pre { margin-top: 18px; padding: 14px; overflow: auto; background: #111827; color: #d1fae5; border-radius: 6px; min-height: 56px; }
+      </style>
+    </head>
+    <body>
+      <main>
+        <section>
+          <h1>XBrain Company Intake</h1>
+          <p>Gui thong tin cong ty vao backend noi bo qua GitOps rollout.</p>
+          <form id="company-form">
+            <label>Ten cong ty <input name="company" value="XBrain" required></label>
+            <label>Email lien he <input name="email" type="email" value="hello@xbrain.local" required></label>
+            <label>Nhu cau <textarea name="message" required>Can tu van AI va cloud platform.</textarea></label>
+            <button type="submit">Gui den Backend</button>
+          </form>
+          <pre id="result">Backend response se hien thi o day.</pre>
+        </section>
+      </main>
+      <script>
+        const form = document.querySelector("#company-form");
+        const result = document.querySelector("#result");
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          result.textContent = "Dang gui...";
+          const payload = Object.fromEntries(new FormData(form).entries());
+          const response = await fetch("/api/xbrain-company", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          result.textContent = await response.text();
+        });
+      </script>
+    </body>
+    </html>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xbrain-nginx
+  namespace: mini-platform
+data:
+  default.conf: |
+    server {
+      listen 80;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+
+      location / {
+        try_files $uri $uri/ /index.html;
+      }
+
+      location /api/ {
+        proxy_pass http://xbrain-api:8080/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+      }
+    }

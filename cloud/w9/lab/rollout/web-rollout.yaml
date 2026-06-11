@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: web
+  namespace: mini-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+        xbrain.io/component: frontend
+      annotations:
+        xbrain.io/restarted-at: "2026-06-11T04:16:00Z"
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.28
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: xbrain-frontend
+              mountPath: /usr/share/nginx/html
+            - name: xbrain-nginx
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: xbrain-frontend
+          configMap:
+            name: xbrain-frontend
+            items:
+              - key: index.html
+                path: index.html
+        - name: xbrain-nginx
+          configMap:
+            name: xbrain-nginx
+            items:
+              - key: default.conf
+                path: default.conf
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - pause:
+            duration: 5s
+        - analysis:
+            templates:
+              - templateName: web-error-rate
+        - setWeight: 50
+        - pause:
+            duration: 5s
+        - analysis:
+            templates:
+              - templateName: web-error-rate

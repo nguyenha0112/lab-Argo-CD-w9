@@ -1,0 +1,3 @@
+argocd-port-forward.*.log
+cloud/.git-backup-before-outer-push/
+web-port-forward*.log

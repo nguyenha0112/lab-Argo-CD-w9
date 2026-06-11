@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: web-error-rate
+  namespace: mini-platform
+spec:
+  metrics:
+    - name: error-rate
+      interval: 5s
+      count: 1
+      successCondition: result[0] == 1
+      failureLimit: 0
+      provider:
+        prometheus:
+          address: http://prometheus-operated.observability.svc.cluster.local:9090
+          query: |
+            vector(0)
