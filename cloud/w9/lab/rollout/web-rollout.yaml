@@ -14,7 +14,7 @@ spec:
         app: web
         xbrain.io/component: frontend
       annotations:
-        xbrain.io/restarted-at: "2026-06-11T04:16:00Z"
+        xbrain.io/restarted-at: "2026-06-11T23:46:25Z"
     spec:
       containers:
         - name: web

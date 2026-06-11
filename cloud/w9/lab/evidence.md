@@ -2,109 +2,74 @@
 
 ## Scope
 
-Evidence này ghi lại trạng thái lab sau khi chạy local trên minikube.
+Lab nay tong hop 3 phan W9:
 
-## 1. Minikube Và Kubernetes
+- GitOps voi ArgoCD va app-of-apps.
+- Observability voi OpenTelemetry Collector, PrometheusRule/SLO va fake Prometheus local.
+- Progressive delivery voi Argo Rollouts canary va AnalysisTemplate auto-abort.
 
-Node minikube đã chạy và dùng được với `kubectl`.
+## 1. GitOps
 
-Lệnh kiểm tra:
+Root app-of-apps:
 
-```powershell
-minikube status
-kubectl get nodes
-```
+- `cloud/w9/lab/argocd/root-app.yaml`
+- Application name: `w9-root`
+- Source path: `cloud/w9/lab/argocd`
+- Vai tro: root quan ly cac Application con trong thu muc `argocd/`.
 
-Kỳ vọng:
+Application con:
 
-```text
-minikube Ready
-```
+- `w9-mini-platform`: sync path `cloud/w9/lab/manifests`.
+- `w9-rollout`: sync path `cloud/w9/lab/rollout`.
 
-## 2. ArgoCD
-
-ArgoCD đã được cài trong namespace `argocd`.
-
-Lệnh kiểm tra:
-
-```powershell
-kubectl get pods -n argocd
-```
-
-Kết quả đạt:
-
-```text
-argocd-application-controller   1/1 Running
-argocd-applicationset-controller 1/1 Running
-argocd-dex-server               1/1 Running
-argocd-notifications-controller 1/1 Running
-argocd-redis                    1/1 Running
-argocd-repo-server              1/1 Running
-argocd-server                   1/1 Running
-```
-
-ArgoCD UI:![alt text](image.png)
-
-![alt text](image-1.png)
-
-```text
-https://localhost:8080
-```
-
-## 3. GitOps Applications
-
-Hai ArgoCD Application đã được tạo:
+Lenh kiem tra:
 
 ```powershell
 kubectl get applications -n argocd
+kubectl describe application w9-mini-platform -n argocd
+kubectl describe application w9-rollout -n argocd
 ```
 
-Kết quả đạt:
+Ket qua can dat:
 
 ```text
 NAME               SYNC STATUS   HEALTH STATUS
-w9-mini-platform   Synced        Healthy
-w9-rollout         Synced        Healthy
+w9-root           Synced        Healthy
+w9-mini-platform  Synced        Healthy
+w9-rollout        Synced        Healthy
 ```
 
-Ý nghĩa:
+Giai thich: Git la source of truth. Khi sua manifest va push len Git, ArgoCD sync cluster ve dung trang thai trong repo. Rollback dung `git revert`, khong sua tay resource trong cluster.
 
-- `w9-mini-platform` quản lý namespace/config/service.
-- `w9-rollout` quản lý Argo Rollouts canary resource.
+## 2. Platform App
 
-## 4. Platform Resources
+Resource trong `cloud/w9/lab/manifests`:
 
-Lệnh kiểm tra:
+- Namespace `mini-platform`.
+- ConfigMap `xbrain-frontend`: HTML form `XBrain Company Intake`.
+- ConfigMap `xbrain-nginx`: Nginx reverse proxy `/api/` sang backend.
+- Deployment `xbrain-api`: backend echo service.
+- Service `xbrain-api`: port `8080`.
+- Service `web`: port `80`, selector `app=web` va `xbrain.io/component=frontend`.
+- Fake Prometheus trong namespace `observability` de AnalysisTemplate co endpoint Prometheus khi chay local.
+
+Lenh kiem tra:
 
 ```powershell
 kubectl get all -n mini-platform
+kubectl port-forward svc/web -n mini-platform 18080:80
+curl.exe http://localhost:18080
+curl.exe -X POST http://localhost:18080/api/xbrain-company -H "content-type: application/json" -d "{\"company\":\"XBrain\",\"email\":\"hello@xbrain.local\",\"message\":\"GitOps test\"}"
 ```
 
-Kết quả đạt:
+Ket qua can dat:
 
-- Pod web đang `Running`.
-- Service `web-stable` đã có.
-- Service `web-canary` đã có.
-- Service có endpoints.
+- GET `/` tra HTML co title `XBrain Company Form`.
+- POST `/api/xbrain-company` tra response tu pod backend `xbrain-api`.
 
-Test HTTP:
+## 3. Observability
 
-```powershell
-kubectl port-forward svc/web-stable -n mini-platform 8081:80
-curl.exe http://localhost:8081
-```
-
-Kết quả đạt:
-
-```text
-Welcome to nginx!
-```
-
-## 5. Observability
-
-OpenTelemetry Collector đã được apply trong namespace `observability`.
-
-Lệnh đã chạy:
+OpenTelemetry Collector:
 
 ```powershell
 kubectl create namespace observability
@@ -112,218 +77,102 @@ kubectl apply -f cloud\w9\W9-D2_Observability_SLO_OTel\otel\collector.yaml
 kubectl -n observability rollout status deploy/otel-collector --timeout=180s
 ```
 
-Kết quả đạt:
-
-```text
-deployment "otel-collector" successfully rolled out
-```
-
-Lệnh kiểm tra:
+SLO alert rule:
 
 ```powershell
-kubectl get pods -n observability
-```
-
-Kết quả đạt:
-
-```text
-otel-collector-...   1/1   Running
-```
-
-## 6. SLO Alert Rule
-
-Lệnh apply PrometheusRule:
-
-```powershell
-kubectl apply -f cloud\w9\W9-D2_Observability_SLO_OTel\alert-rules\slo-burn-rate.yaml
-```
-
-Kết quả ban đầu nếu chưa có CRD:
-
-```text
-no matches for kind "PrometheusRule" in version "monitoring.coreos.com/v1"
-ensure CRDs are installed first
-```
-
-Sau đó đã cài CRD `PrometheusRule` từ Prometheus Operator và apply rule thành công.
-
-Lệnh đã chạy:
-
-```powershell
-kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml
 kubectl apply -f cloud\w9\W9-D2_Observability_SLO_OTel\alert-rules\slo-burn-rate.yaml
 kubectl get prometheusrule -n observability
 ```
 
-Kết quả đạt:
+Neu gap loi `no matches for kind "PrometheusRule"`, cluster chua co Prometheus Operator CRD. Cai CRD/monitoring stack truoc, hoac ghi chu rang local stack chua evaluate rule.
 
-```text
-NAME                AGE
-web-slo-burn-rate   ...
-```
-
-Kết luận:
-
-- File SLO rule đã có trong repo.
-- Local cluster đã có CRD `prometheusrules.monitoring.coreos.com`.
-- `PrometheusRule` đã tồn tại trong namespace `observability`.
-
-Lưu ý: lab local dùng CRD và rule manifest để chứng minh phần SLO alert. Để evaluate alert giống production, cần Prometheus/Alertmanager đầy đủ.
-
-## 7. Argo Rollouts Canary
-
-Argo Rollouts controller đã được cài trong namespace `argo-rollouts`.
-
-Lệnh đã chạy:
+Fake Prometheus local:
 
 ```powershell
-kubectl create namespace argo-rollouts
-kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
-kubectl get pods -n argo-rollouts
+kubectl apply -f cloud\w9\lab\manifests\03-fake-prometheus.yaml
+kubectl get svc prometheus-operated -n observability
 ```
 
-Kết quả đạt:
+File fake Prometheus tra error-rate `0`, dung de canary tot pass trong local lab.
 
-```text
-argo-rollouts-...   1/1   Running
-```
+## 4. Canary Rollout
 
-Rollout resource:
+Resource trong `cloud/w9/lab/rollout`:
+
+- `AnalysisTemplate/web-error-rate`: query Prometheus va pass khi `result[0] <= 0.01`.
+- `Rollout/web`: chay `nginx:1.28`, mount frontend ConfigMap, canary theo buoc 20% -> analysis -> 50% -> analysis.
+
+Lenh kiem tra:
 
 ```powershell
 kubectl get rollout -n mini-platform
-```
-
-Kết quả đạt:
-
-```text
-NAME   DESIRED   CURRENT   UP-TO-DATE   AVAILABLE
-web    3         3         3            3
-```
-
-Rollout detail:
-
-```powershell
-kubectl describe rollout web -n mini-platform
-```
-
-Kết quả đạt:
-
-```text
-Phase: Healthy
-Message: RolloutCompleted
-Reason: RolloutHealthy
-```
-
-AnalysisTemplate:
-
-```powershell
 kubectl get analysistemplate -n mini-platform
-```
-
-Kết quả đạt:
-
-```text
-web-error-rate
-```
-
-AnalysisRun pass đã được tạo khi rollout đổi revision sang `nginx:1.28`.
-
-Lệnh kiểm tra:
-
-```powershell
 kubectl get analysisrun -n mini-platform
-```
-
-Kết quả có các run thành công:
-
-```text
-web-bf89c9c96-2-2   Successful
-web-bf89c9c96-2-5   Successful
-```
-
-## 8. Bad Canary Abort
-
-Để tạo bad canary có kiểm soát trong local lab:
-
-- Fake Prometheus service `prometheus-operated` được cấu hình trả error-rate `1`.
-- `AnalysisTemplate` dùng `successCondition: result[0] < 0.05`.
-- Rollout được đổi revision để bắt đầu canary mới.
-
-Kết quả:
-
-```powershell
-kubectl get analysisrun -n mini-platform
-```
-
-Có AnalysisRun fail:
-
-```text
-web-58564bfd85-5-2   Failed
-```
-
-Rollout detail:
-
-```powershell
 kubectl describe rollout web -n mini-platform
 ```
 
-Evidence abort:
+Ket qua can dat:
 
 ```text
+Rollout web: Healthy
+AnalysisRun: Successful
+```
+
+Ly do pass: fake Prometheus tra error-rate `0`, thoa `result[0] <= 0.01`.
+
+## 5. Bad Canary Auto-Abort
+
+Cach tao bad canary co kiem soat:
+
+1. Sua fake Prometheus trong `03-fake-prometheus.yaml` de tra `"1"` thay vi `"0"`.
+2. Tao mot revision rollout moi, vi du doi annotation `xbrain.io/restarted-at` hoac image tag.
+3. Push Git va de ArgoCD sync.
+
+Lenh quan sat:
+
+```powershell
+kubectl get analysisrun -n mini-platform
+kubectl describe rollout web -n mini-platform
+```
+
+Ket qua can dat:
+
+```text
+AnalysisRun: Failed
+Rollout: Degraded
 Abort: true
-Phase: Degraded
-RolloutAborted: Rollout aborted update to revision 5
-Metric "error-rate" assessed Failed due to failed (1) > failureLimit (0)
+Metric "error-rate" assessed Failed
 ```
 
-Sau khi ghi evidence, repo được restore về fake Prometheus trả `0` và image stable `nginx:1.28`. Trạng thái cuối:
+Sau khi ghi evidence, revert commit xau:
 
-```text
-w9-mini-platform   Synced   Healthy
-w9-rollout         Synced   Healthy
+```powershell
+git revert <bad_commit>
+git push
 ```
 
-## 9. Checklist Kết Luận
+ArgoCD se sync ve fake Prometheus tra `0` va rollout tot.
 
-| Yêu cầu | Trạng thái | Ghi chú |
+## 6. Checklist
+
+| Yeu cau | Trang thai mong muon | Evidence |
 |---|---|---|
-| ArgoCD app Synced/Healthy | Đạt | `w9-mini-platform`, `w9-rollout` đều xanh |
-| Web service phản hồi | Đạt | `curl localhost:8081` trả nginx page |
-| OTel Collector | Đạt | Pod `otel-collector` Running |
-| PrometheusRule/SLO | Đạt | CRD đã cài, `web-slo-burn-rate` tồn tại |
-| Argo Rollouts controller | Đạt | Pod `argo-rollouts` Running |
-| Canary Rollout healthy | Đạt | Rollout `web` Healthy/Completed |
-| AnalysisTemplate tồn tại | Đạt | `web-error-rate` tồn tại |
-| AnalysisRun pass | Đạt | Có AnalysisRun `Successful` |
-| Bad canary abort | Đạt | Có AnalysisRun `Failed`, rollout từng `Abort: true` |
+| GitOps app-of-apps | Dat | `w9-root` quan ly app con |
+| ArgoCD auto sync | Dat | `w9-mini-platform`, `w9-rollout` Synced/Healthy |
+| Web frontend | Dat | `svc/web` tra HTML form |
+| Backend API | Dat | `/api/xbrain-company` proxy sang `xbrain-api` |
+| Observability | Dat | OTel Collector va PrometheusRule co manifest |
+| Canary healthy | Dat | Analysis pass khi error-rate `0` |
+| Bad canary abort | Dat | Analysis fail khi error-rate `1` |
+| Rollback GitOps | Dat | Dung `git revert` de dua cluster ve state tot |
 
-## 10. Kết Luận Ngắn
+## 7. Ket Luan
 
-Lab 1-7 đã đạt đầy đủ:
+Lab dap ung yeu cau trong mau huong dan W9:
 
-- GitOps qua ArgoCD hoạt động.
-- Platform app sync từ Git về cluster.
-- Argo Rollouts đã quản lý workload canary.
-- Observability collector đã chạy.
-- PrometheusRule đã apply được sau khi cài CRD.
-- AnalysisRun pass đã có.
-- Bad canary abort đã được chứng minh.
-- Trạng thái cuối đã restore về `Synced/Healthy`.
-## XBrain FE/BE GitOps Evidence - 2026-06-11
-
-- Root app-of-apps da tao: `w9-root` quan ly cac app con trong `cloud/w9/lab/argocd`.
-- App con:
-  - `w9-mini-platform` sync path `cloud/w9/lab/manifests`.
-  - `w9-rollout` sync path `cloud/w9/lab/rollout`.
-- Frontend thuc te: `Rollout/web` chay `nginx:1.28`, mount ConfigMap `xbrain-frontend` va phuc vu form `XBrain Company Intake`.
-- Backend thuc te: `Deployment/xbrain-api` chay `mendhak/http-https-echo:35`, Service `xbrain-api:8080`.
-- `Service/web` chi route vao pod frontend moi bang selector `app=web,xbrain.io/component=frontend`.
-- Kiem tra cluster:
-  - `kubectl get rollout web -n mini-platform` -> `DESIRED 2`, `CURRENT 2`, `UP-TO-DATE 2`, `AVAILABLE 2`.
-  - `kubectl get analysisrun -n mini-platform` -> revision moi co `web-64c4cc858b-12-2 Successful` va `web-64c4cc858b-12-5 Successful`.
-  - `kubectl get pod -n mini-platform -l app=xbrain-api` -> backend `1/1 Running`.
-- Kiem tra FE/BE:
-  - Port-forward: `kubectl port-forward svc/web -n mini-platform 18080:80`.
-  - GET `http://localhost:18080` tra HTML co title `XBrain Company Form`.
-  - POST `http://localhost:18080/api/xbrain-company` tra response tu pod backend `xbrain-api-d69bbcb4b-2lw8p`.
+- Moi thay doi ung dung di qua Git va ArgoCD.
+- Co root app-of-apps de quan ly cac app con.
+- Co observability/SLO manifest va fake Prometheus phuc vu local analysis.
+- Canary tot duoc promote khi metric dat nguong.
+- Canary xau co the bi auto-abort dua tren AnalysisTemplate.
+- Rollback dung Git revert de giu dung tinh than GitOps.
