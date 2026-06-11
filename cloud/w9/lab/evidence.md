@@ -2,19 +2,19 @@
 
 ## 1. GitOps
 
-Da tao va sync ArgoCD app-of-apps:
+Đã tạo và đồng bộ ArgoCD theo mô hình app-of-apps:
 
 - Root app: `w9-root`
 - Platform app: `w9-mini-platform`
 - Rollout app: `w9-rollout`
 
-Lenh da chay:
+Lệnh đã chạy:
 
 ```powershell
 kubectl get applications -n argocd
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 NAME               SYNC STATUS   HEALTH STATUS
@@ -23,17 +23,19 @@ w9-rollout         Synced        Healthy
 w9-root            Synced        Healthy
 ```
 
-Repo da push commit moi:
+Ảnh ArgoCD Applications:
 
-```text
-af7abff Fix w9 canary analysis evidence
-```
+![ArgoCD Applications Synced Healthy](argocd-applications.png)
+
+Ảnh root app quản lý các app con:
+
+![ArgoCD root app tree](argocd-root-app-tree.png)
 
 ## 2. Platform App
 
-Da deploy namespace, frontend, backend va service trong `mini-platform`.
+Đã deploy namespace, frontend, backend và service trong namespace `mini-platform`.
 
-Lenh da chay:
+Lệnh đã chạy:
 
 ```powershell
 kubectl apply -f cloud\w9\lab\manifests
@@ -41,7 +43,7 @@ kubectl get pods -n mini-platform -o wide
 kubectl get svc,endpoints -n mini-platform
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 web-5675fd79c9-2v9pd         1/1 Running
@@ -54,27 +56,31 @@ endpoints/web        10.244.0.91:80,10.244.0.90:80
 endpoints/xbrain-api 10.244.0.82:8080
 ```
 
-Kiem tra frontend:
+Kiểm tra frontend:
 
 ```powershell
 kubectl port-forward svc/web -n mini-platform 18080:80
 curl.exe -s http://localhost:18080
 ```
 
-Ket qua co:
+Kết quả có:
 
 ```text
 <title>XBrain Company Form</title>
 <h1>XBrain Company Intake</h1>
 ```
 
-Kiem tra backend qua Nginx proxy:
+Ảnh web frontend:
+
+![XBrain Company Intake frontend](web-frontend-form.png)
+
+Kiểm tra backend qua Nginx proxy:
 
 ```powershell
 curl.exe --% -s -X POST http://localhost:18080/api/xbrain-company -H "content-type: application/json" -d "{""company"":""XBrain"",""email"":""hello@xbrain.local"",""message"":""GitOps evidence test""}"
 ```
 
-Ket qua co response tu backend pod:
+Kết quả có response từ backend pod:
 
 ```text
 "hostname": "xbrain-api-d69bbcb4b-2lw8p"
@@ -84,9 +90,9 @@ Ket qua co response tu backend pod:
 
 ## 3. Observability
 
-Da deploy OpenTelemetry Collector, PrometheusRule va fake Prometheus local.
+Đã deploy OpenTelemetry Collector, PrometheusRule và fake Prometheus local.
 
-Lenh da chay:
+Lệnh đã chạy:
 
 ```powershell
 kubectl apply -f cloud\w9\W9-D2_Observability_SLO_OTel\otel\collector.yaml
@@ -95,7 +101,7 @@ kubectl get pods -n observability
 kubectl get prometheusrule -n observability
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 fake-prometheus-fd7468447-wbfs6   1/1 Running
@@ -105,13 +111,13 @@ NAME                AGE
 web-slo-burn-rate   20h
 ```
 
-Fake Prometheus dang tra metric tot:
+Fake Prometheus đang trả metric tốt:
 
 ```powershell
 kubectl get configmap fake-prometheus-content -n observability -o yaml
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 value [0,"0"]
@@ -119,9 +125,9 @@ value [0,"0"]
 
 ## 4. Canary Rollout
 
-Da deploy Argo Rollouts resource trong `cloud/w9/lab/rollout`.
+Đã deploy Argo Rollouts resource trong `cloud/w9/lab/rollout`.
 
-Lenh da chay:
+Lệnh đã chạy:
 
 ```powershell
 kubectl apply -f cloud\w9\lab\rollout
@@ -129,50 +135,54 @@ kubectl get rollout web -n mini-platform
 kubectl get analysisrun -n mini-platform --sort-by=.metadata.creationTimestamp
 ```
 
-Ket qua rollout:
+Kết quả rollout:
 
 ```text
 NAME   DESIRED   CURRENT   UP-TO-DATE   AVAILABLE
 web    2         2         2            2
 ```
 
-AnalysisRun moi thanh cong:
+AnalysisRun mới thành công:
 
 ```text
 web-5675fd79c9-15-2   Successful
 web-5675fd79c9-15-5   Successful
 ```
 
-Dieu kien analysis dang dung:
+Điều kiện analysis đang dùng:
 
 ```powershell
 kubectl get analysistemplate web-error-rate -n mini-platform -o jsonpath="{.spec.metrics[0].successCondition}"
 ```
 
-Ket qua:
+Kết quả:
 
 ```text
 result[0] <= 0.01
 ```
 
+Ảnh rollout trong ArgoCD:
+
+![ArgoCD rollout tree](argocd-rollout-tree.png)
+
 ## 5. Bad Canary Abort
 
-Da co evidence canary fail va rollback ve stable.
+Đã có evidence canary fail và rollback về stable.
 
-Lenh da chay:
+Lệnh đã chạy:
 
 ```powershell
 kubectl get analysisrun -n mini-platform --sort-by=.metadata.creationTimestamp
 kubectl describe rollout web -n mini-platform
 ```
 
-Ket qua fail:
+Kết quả fail:
 
 ```text
 web-5675fd79c9-13-2   Failed
 ```
 
-Trong rollout event co:
+Trong rollout event có:
 
 ```text
 Rollout aborted update to revision 13
@@ -180,7 +190,7 @@ Metric "error-rate" assessed Failed
 Rollback to stable ReplicaSets
 ```
 
-Trang thai cuoi sau rollback va sync lai Git:
+Trạng thái cuối sau rollback và sync lại Git:
 
 ```text
 Rollout web: Healthy
@@ -188,7 +198,7 @@ ArgoCD apps: Synced / Healthy
 AnalysisRun revision 15: Successful
 ```
 
-## 6. Link Evidence De Chup
+## 6. Link Evidence Để Chụp
 
 - Web app: `http://localhost:18080`
 - ArgoCD UI: `https://localhost:8080`
