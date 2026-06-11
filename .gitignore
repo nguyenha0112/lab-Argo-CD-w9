@@ -1,3 +1,27 @@
-argocd-port-forward.*.log
+# Local nested-repo backup created while flattening cloud/ into this repo.
 cloud/.git-backup-before-outer-push/
+
+# Local port-forward logs.
 web-port-forward*.log
+argocd-port-forward*.log
+
+# OS/editor noise.
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Terraform/runtime output.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Node/Python caches.
+node_modules/
+__pycache__/
+*.py[cod]
