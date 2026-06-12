@@ -25,11 +25,11 @@ w9-root            Synced        Healthy
 
 Ảnh ArgoCD Applications:
 
-![ArgoCD Applications Synced Healthy](argocd-applications.png)
+![ArgoCD Applications Synced Healthy](./argocd-applications.png)
 
 Ảnh root app quản lý các app con:
 
-![ArgoCD root app tree](argocd-root-app-tree.png)
+![ArgoCD root app tree](./argocd-root-app-tree.png)
 
 ## 2. Platform App
 
@@ -72,7 +72,7 @@ Kết quả có:
 
 Ảnh web frontend:
 
-![XBrain Company Intake frontend](web-frontend-form.png)
+![XBrain Company Intake frontend](./web-frontend-form.png)
 
 Kiểm tra backend qua Nginx proxy:
 
@@ -163,7 +163,7 @@ result[0] <= 0.01
 
 Ảnh rollout trong ArgoCD:
 
-![ArgoCD rollout tree](argocd-rollout-tree.png)
+![ArgoCD rollout tree](./argocd-rollout-tree.png)
 
 ## 5. Bad Canary Abort
 
@@ -198,7 +198,25 @@ ArgoCD apps: Synced / Healthy
 AnalysisRun revision 15: Successful
 ```
 
-## 6. Link Evidence Để Chụp
+## 6. Ảnh Minh Chứng
+
+ArgoCD Applications đã Synced/Healthy:
+
+![ArgoCD Applications Synced Healthy](./argocd-applications.png)
+
+Root app quản lý các app con:
+
+![ArgoCD root app tree](./argocd-root-app-tree.png)
+
+Web frontend đã chạy qua service `web`:
+
+![XBrain Company Intake frontend](./web-frontend-form.png)
+
+Rollout tree trong ArgoCD:
+
+![ArgoCD rollout tree](./argocd-rollout-tree.png)
+
+## 7. Link Evidence Để Chụp
 
 - Web app: `http://localhost:18080`
 - ArgoCD UI: `https://localhost:8080`
