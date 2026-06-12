@@ -222,6 +222,26 @@ kubectl get events -n mini-platform --sort-by=.lastTimestamp
 
 Evidence hien tai duoc ghi trong `evidence.md`. Local cluster da cai CRD `PrometheusRule`, da co `AnalysisRun` pass, va da co bad canary abort evidence.
 
+## Tổng Hợp Những Gì Đã Học
+
+Qua lab này, mình đã thực hành được các phần chính của W9:
+
+- GitOps: đưa manifest lên Git để ArgoCD tự đồng bộ về Kubernetes cluster.
+- App-of-apps: dùng root Application `w9-root` để quản lý các app con như `w9-mini-platform` và `w9-rollout`.
+- ArgoCD sync status: phân biệt `Synced` là cấu hình trong cluster đã khớp Git, còn `Healthy` là resource đang chạy ổn.
+- Self-heal: khi cluster bị sửa lệch so với Git, ArgoCD có thể tự kéo trạng thái về đúng manifest trong repo.
+- Platform manifest: tạo namespace, ConfigMap, Service, frontend Nginx và backend API trong Kubernetes.
+- Service routing: dùng Service `web` để expose frontend, và Nginx proxy `/api/` sang Service `xbrain-api`.
+- Observability: triển khai OpenTelemetry Collector, PrometheusRule và fake Prometheus để phục vụ kiểm tra local.
+- SLO/SLI: hiểu cách dùng metric error-rate làm tín hiệu đánh giá chất lượng bản deploy.
+- Argo Rollouts: thay Deployment thường bằng Rollout để deploy canary theo từng bước.
+- AnalysisTemplate: cấu hình điều kiện `result[0] <= 0.01` để canary pass khi error-rate thấp.
+- Canary auto-abort: khi metric xấu, AnalysisRun fail và Rollout tự abort thay vì promote bản lỗi.
+- Rollback theo GitOps: rollback đúng cách bằng cách sửa/revert trên Git rồi để ArgoCD sync lại, thay vì sửa tay trong cluster.
+- Evidence: biết lấy bằng chứng bằng `kubectl get applications`, `kubectl get rollout`, `kubectl get analysisrun`, ảnh ArgoCD UI và ảnh web app.
+
+Kết luận ngắn: lab giúp nối ba phần GitOps, Observability và Canary thành một luồng deploy an toàn: thay đổi đi qua Git, ArgoCD đồng bộ, metric kiểm tra chất lượng, bản tốt được promote và bản lỗi bị abort.
+
 ## Bao Cao Ngan De Nop
 
 Ban co the viet theo mau:

@@ -25,7 +25,7 @@ w9-root            Synced        Healthy
 
 Ảnh ArgoCD Applications:
 
-![ArgoCD Applications Synced Healthy](./argocd-applications.png)
+![ArgoCD Applications Synced Healthy](./argocd-applications1.png)
 
 Ảnh root app quản lý các app con:
 
